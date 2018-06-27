@@ -1,113 +1,129 @@
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-
-import edu.princeton.cs.algs4.In;
+import java.util.List;
+import edu.princeton.cs.algs4.StdDraw;
 import edu.princeton.cs.algs4.StdOut;
+import edu.princeton.cs.algs4.In;
+
 
 public class FastCollinearPoints {
-    private double epsilon = 0.00000001;
-    private ArrayList<LineSegment> lineSeg = new ArrayList<>();
-    private HashMap<Double, ArrayList<Point>> addedLineSeg = new HashMap<>();
+    private static final List<LineSegment> LINE_SEGMENTS = new ArrayList<LineSegment>();
 
-    public FastCollinearPoints(Point[] points) {
-        // finds all line segments containing 4 or more points
-        Point[] pointsCopy = Arrays.copyOf(points, points.length);
+    public FastCollinearPoints(Point[] points)  {   // finds all line segments containing 4 or more points
+        if (points == null || Arrays.asList(points).contains(null)) {
+            throw new NullPointerException("argument is null");
+        }
 
-        checkpoints(points);
-        if (points.length >= 4) {
-            for (int p = 0; p < points.length; ++p) {
-                // compute and sort slopes
-                Arrays.sort(pointsCopy, points[p].slopeOrder());
+        int n = points.length;
 
-                double oldSlope = Double.NEGATIVE_INFINITY; // itself
-                double curSlope = Double.NEGATIVE_INFINITY;
-                ArrayList<Point> lineSegPoints = new ArrayList<>();
-                int firstSameSlopePtr = 1;
-                lineSegPoints.add(points[p]);
-                for (int q = 1; q < pointsCopy.length; ++q) {
-                    curSlope = points[p].slopeTo(pointsCopy[q]);
-                    if (curSlope == oldSlope || Math.abs(curSlope - oldSlope) < epsilon) {
-                        lineSegPoints.add(pointsCopy[q]);
-                    } else {
-                        // check if we can add a new segment
-                        lineSegPoints.add(pointsCopy[firstSameSlopePtr]);
-                        if (lineSegPoints.size() > 3) {
-                            createLineSeg(oldSlope, lineSegPoints);
-                        }
-                        // clear state
-                        lineSegPoints.clear();
-                        lineSegPoints.add(points[p]);
-                        firstSameSlopePtr = q;
-                    }
-                    // System.out.format("%f %d\n", curSlope,
-                    // lineSegPoints.size());
-                    oldSlope = curSlope;
+        Point[] pointsClone = points.clone();
+        Arrays.sort(pointsClone);
+        Point[] points2 = new Point[n];
+
+
+        for (int p = 0; p < n; p++) { // if points.length - 3, we won't catch if 2 points are the same at the end.
+            for (int i = p; i < n; i++)
+                points2[i] = pointsClone[i];
+
+            Point pointP = pointsClone[p];
+            Arrays.sort(points2, p+1, n, pointP.slopeOrder());
+            Arrays.sort(points2, 0, p, pointP.slopeOrder());
+
+            // go through the array:
+            int ct = 0;
+            double previousSlope = Double.NEGATIVE_INFINITY;
+            for (int i = p+1; i < n; i++) {
+                double slope = pointP.slopeTo(points2[i]);
+
+                // System.out.println(pointP.toString() + points2[i].toString());
+                // System.out.println("slope:" + slope);
+                if (slope == Double.NEGATIVE_INFINITY) {
+                    throw new IllegalArgumentException("same points");
                 }
+                if (Double.compare(slope, previousSlope) == 0) {
+                    ct++;
+                }
+                // System.out.println("ct:" + ct + " i:" + i);
+                // System.out.println("slope != previousSlope" + Boolean.toString(slope != previousSlope));
+                // System.out.println("i == points.length - 1:" + Boolean.toString(i == points.length - 1));
+                if (ct >= 2 && ((Double.compare(slope, previousSlope) != 0) || i == n - 1)) {
+                    // System.out.println("CHANGING:");
+                    Arrays.sort(points2, i - ct, i);
+                    Point minPt = points2[i - ct];
+                    Point maxPt = points2[i - 1];
+                    if (Double.compare(slope, previousSlope) == 0) {
+                        maxPt = points2[i];
+                    }
 
-                // System.out.println("---------------");
-                lineSegPoints.add(pointsCopy[firstSameSlopePtr]);
-                if (lineSegPoints.size() > 3)
-                    createLineSeg(curSlope, lineSegPoints);
+                    if (pointP.compareTo(minPt) < 0) {
+                        minPt = pointP;
+                    }
+                    if (pointP.compareTo(maxPt) > 0) {
+                        maxPt = pointP;
+                    }
+                    // System.out.println(pointP.toString() + points[i - ct].toString() +  points[i - 1].toString());
+
+                    // check if there is a point in the first array with the same slope
+
+                    boolean insert = true;
+                    // System.out.println(slope);
+
+                    for (int j = 0; j < p; j++) {
+                        double pastSlope = pointP.slopeTo(points2[j]);
+                        if (pastSlope >= previousSlope) {
+                            if (pastSlope == previousSlope) {
+                                insert = false;
+                            }
+                            break;
+                        }
+                    }
+
+
+                    /*
+                     boolean insert = true;
+                     for (int j = i - ct; j < i; j++) {
+                     // System.out.println("checking:" + points[j].toString());
+                     if (!insertMap(points[j], previousSlope)) {
+                     insert = false;
+                     }
+                     }
+                     // System.out.println("checking:" + pointP.toString());
+                     if (!insertMap(pointP, previousSlope)) {
+                     insert = false;
+                     }
+                     */
+
+                    if (insert) {
+                        LineSegment lineSeg = new LineSegment(minPt, maxPt);
+                        LINE_SEGMENTS.add(lineSeg);
+                    }
+
+                }
+                if (slope != previousSlope) {
+                    ct = 0;
+                    previousSlope = slope;
+                }
             }
+
         }
+
     }
 
-    private boolean createLineSeg(double slope, ArrayList<Point> lineSegPoints) {
-        // get already added points for this slope
-        ArrayList<Point> addedPoints = addedLineSeg.get(slope);
 
-        // sort line segment points to eliminate sub-linesegs
-        Collections.sort(lineSegPoints);
-        Point a = lineSegPoints.get(0);
-        Point b = lineSegPoints.get(lineSegPoints.size() - 1);
-
-        // add if not exists
-        if (addedPoints == null) {
-            lineSeg.add(new LineSegment(a, b));
-            // save to already added linesegs
-            addedPoints = new ArrayList<>();
-            addedPoints.add(b);
-            addedLineSeg.put(slope, addedPoints);
-        } else {
-            for (Point p : addedPoints) {
-                if (p.compareTo(b) == 0)
-                    return false;
-            }
-
-            lineSeg.add(new LineSegment(a, b));
-            // save to already added linesegs
-            addedPoints.add(b);
-            addedLineSeg.put(slope, addedPoints);
-        }
-
-        return true;
+    public int numberOfSegments()  {      // the number of line segments
+        return LINE_SEGMENTS.size();
     }
 
-    public int numberOfSegments() {
-        // the number of line segments
-        return lineSeg.size();
-    }
-
-    public LineSegment[] segments() {
-        // the line segments
-        return lineSeg.toArray(new LineSegment[lineSeg.size()]);
-    }
-
-    private void checkpoints(Point[] points) {
-        for (int i = 0; i < points.length - 1; ++i)
-            for (int j = i + 1; j < points.length; ++j) {
-                if (points[i].compareTo(points[j]) == 0)
-                    throw new IllegalArgumentException("Repeated points detected.");
-            }
+    public LineSegment[] segments()    {            // the line segments
+        LineSegment[] lineSegment = new LineSegment[numberOfSegments()];
+        lineSegment =  LINE_SEGMENTS.toArray(lineSegment);
+        return lineSegment;
     }
 
     public static void main(String[] args) {
-        System.out.println(Double.POSITIVE_INFINITY == Double.POSITIVE_INFINITY);
 
         // read the n points from a file
-        In in = new In("collinear-testing/collinear/vertical25.txt");
+        In in = new In(args[0]);
         int n = in.readInt();
         Point[] points = new Point[n];
         for (int i = 0; i < n; i++) {
@@ -116,22 +132,21 @@ public class FastCollinearPoints {
             points[i] = new Point(x, y);
         }
 
-        // Brute force
-        StdOut.println("BruteCollinearPoints");
-        BruteCollinearPoints collinear = new BruteCollinearPoints(points);
-        for (LineSegment segment : collinear.segments()) {
-            StdOut.println(segment);
+        // draw the points
+        StdDraw.enableDoubleBuffering();
+        StdDraw.setXscale(0, 32768);
+        StdDraw.setYscale(0, 32768);
+        for (Point p : points) {
+            p.draw();
         }
-
-        StdOut.println(collinear.numberOfSegments());
+        StdDraw.show();
 
         // print and draw the line segments
-        StdOut.println("\nFastCollinearPoints");
-        FastCollinearPoints collinear2 = new FastCollinearPoints(points);
-        for (LineSegment segment : collinear2.segments()) {
+        FastCollinearPoints collinear = new FastCollinearPoints(points);
+        for (LineSegment segment : collinear.segments()) {
             StdOut.println(segment);
+            segment.draw();
         }
-
-        StdOut.println(collinear2.numberOfSegments());
+        StdDraw.show();
     }
 }
