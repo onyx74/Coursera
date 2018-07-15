@@ -2,12 +2,12 @@
  *  Compilation:  javac Point.java
  *  Execution:    java Point
  *  Dependencies: none
- *  
+ *
  *  An immutable data type for points in the plane.
  *  For use on Coursera, Algorithms Part I programming assignment.
  *
  ******************************************************************************/
- 
+
 import java.util.Comparator;
 import edu.princeton.cs.algs4.StdDraw;
 
@@ -60,10 +60,10 @@ public class Point implements Comparable<Point> {
      */
     public double slopeTo(Point that) {
         /* YOUR CODE HERE */
-        if (this.x == that.x && this.y == that.y) return Double.NEGATIVE_INFINITY;
-        if (this.x == that.x) return Double.POSITIVE_INFINITY;
-        if (this.y == that.y) return +0;
-        return 1.0*(this.y - that.y)/(this.x - that.x); // convert to double precision
+        if (x == that.x && y == that.y) return Double.NEGATIVE_INFINITY;
+        if (x == that.x) return Double.POSITIVE_INFINITY;
+        if (y == that.y) return +0.0;
+        return (double) (that.y - y) / (that.x - x);
     }
 
     /**
@@ -80,9 +80,8 @@ public class Point implements Comparable<Point> {
      */
     public int compareTo(Point that) {
         /* YOUR CODE HERE */
-        if (this.x == that.x && this.y == that.y) return 0;
-        if ((this.y < that.y) || (this.y == that.y && this.x < that.x)) return -1;
-        return 1;
+        if (y == that.y) return x - that.x;
+        return y - that.y;
     }
 
     /**
@@ -94,11 +93,11 @@ public class Point implements Comparable<Point> {
     public Comparator<Point> slopeOrder() {
         /* YOUR CODE HERE */
         return new Comparator<Point>() {
-            public int compare(Point a, Point b) {
-                double diff = slopeTo(a) - slopeTo(b);
-                if (diff > 0) return 1;
-                if (diff < 0) return -1;
-                return 0;
+            public int compare(Point o1, Point o2) {
+                double val = slopeTo(o1) - slopeTo(o2);
+                if (val > 0) return 1;
+                else if (val < 0) return -1;
+                else return 0;
             }
         };
     }
@@ -116,13 +115,12 @@ public class Point implements Comparable<Point> {
         return "(" + x + ", " + y + ")";
     }
 
+
+
     /**
      * Unit tests the Point data type.
      */
     public static void main(String[] args) {
         /* YOUR CODE HERE */
-        Point a = new Point(1, 1);
-        Point b = new Point(1, 2);
-        System.out.println(a.slopeTo(b));
     }
 }
